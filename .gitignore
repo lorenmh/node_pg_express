@@ -1,0 +1,9 @@
+##
+# .gitignore file
+##
+
+# LOGS
+*.log
+
+# BACKUPS / BUFFERS
+*.*~

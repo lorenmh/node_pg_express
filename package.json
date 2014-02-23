@@ -1,0 +1,20 @@
+{
+  "name": "node_canvas",
+  "version": "0.0.0",
+  "description": "A simple Node webserver to serve static canvas pages",
+  "main": "app.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lorenmh/MEAN_seed.git"
+  },
+  "author": "Loren Howard",
+  "engines": {
+    "node": "0.10.x"
+  },
+  "dependencies": {
+    "express": "3.4.x",
+    "logfmt": "0.18.x",
+    "mongodb": "1.3.x",
+    "ejs": "~0.8.5"
+  }
+}
