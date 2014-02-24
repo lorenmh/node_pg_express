@@ -5,6 +5,9 @@ var mongo   = require('mongodb');
 var ejs     = require('ejs');
 var pg      = require("pg");
 
+// Local modules
+var contactForm = require("contactform"); 
+
 // Native Node modules
 var path    = require('path');
 
@@ -15,6 +18,9 @@ app.use(logfmt.requestLogger());
 
 // Sets up /public as a static directory serving files at /assets
 app.use('/assets', express.static(path.join(__dirname + '/public')));
+
+// for serialization / parsing JSON
+app.use(express.json());
 
 // Sets up /views as a views directory
 app.set('views', path.join(__dirname, '/views'));
@@ -32,22 +38,21 @@ app.listen(port, function() {
   console.log('Listening on ' + port);
 });
 
-
-/** CONTACT FORM! **/
-app.use(express.json());
-
 app.post('/contact', function(req, res) {
-  getDataFromRequest(req, res, validate);
+  contactForm.handlePostRequest(req, res);
 });
 
-var getDataFromRequest = function(req, res, callback) {
+
+/** CONTACT FORM! **/
+
+var handlePostRequest = function(req, res) {
   var body = '';
   req.setEncoding('utf8');
   req.on('data', function(chunk) {
     body += chunk;
   })
   req.on('end', function() {
-    callback(req, res, JSON.parse(data));
+    validate(req, res, JSON.parse(body));
   })
 };
 
@@ -63,11 +68,15 @@ var validate = function(req, res, data) {
     errors.push("email");
   }
   if (errors.length == 0) {
-    sendSuccessAndInsert(res, data)
+    insertContactAndRespond(res, data)
   } else {
     sendFailure(res, errors);
   }
 }
+
+var sendFailure = function(res, errors) {
+  res.json(400, {error: errors});
+};
 
 // role = node_pg, password = 1234, ... database = node_pg
 var dbUri = "postgres://node_pg:1234@localhost:5432/node_pg";
@@ -79,10 +88,6 @@ client.connect(function(error) {
     return console.error("connection error", error);
   }
 })
-
-var sendSuccessAndInsert(res, data) {
-
-}
 
 var initTable = function(){
   var tableInitString = 
@@ -101,10 +106,7 @@ var initTable = function(){
   });
 };
 
-// for some reason this isn't working as an immediate function, so fuck
-initTable();
-
-var insertContact = function(data) {
+var insertContactAndRespond = function(res, data) {
   var insertString = 
     "INSERT INTO contact(name, email, message) VALUES($1,$2,$3)";
   var insertArray = [data.name, data.email, data.message];
@@ -112,10 +114,11 @@ var insertContact = function(data) {
   client.query(insertString, insertArray, function(error) {
     if (error) {
       return console.error("row insert error", error);
+      res.json(500, {error:"Internal Server Error (insertion)"});
     }
 
+    res.json({ok: true});
     client.end();
-    console.log("Inserted into table, " + name + ", " + email + ".")
   });
 }
 
@@ -147,3 +150,6 @@ var messageFieldValid = function(string) {
     return false;
   }
 }
+
+// for some reason this isn't working as an immediate function, so fuck
+initTable();
