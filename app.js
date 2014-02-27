@@ -5,9 +5,6 @@ var mongo   = require('mongodb');
 var ejs     = require('ejs');
 var pg      = require("pg");
 
-// Local modules
-var contactForm = require("contactform"); 
-
 // Native Node modules
 var path    = require('path');
 
@@ -18,9 +15,6 @@ app.use(logfmt.requestLogger());
 
 // Sets up /public as a static directory serving files at /assets
 app.use('/assets', express.static(path.join(__dirname + '/public')));
-
-// for serialization / parsing JSON
-app.use(express.json());
 
 // Sets up /views as a views directory
 app.set('views', path.join(__dirname, '/views'));
@@ -38,12 +32,13 @@ app.listen(port, function() {
   console.log('Listening on ' + port);
 });
 
-app.post('/contact', function(req, res) {
-  contactForm.handlePostRequest(req, res);
-});
-
 
 /** CONTACT FORM! **/
+app.use(express.json());
+
+app.post('/contact', function(req, res) {
+  handlePostRequest(req, res);
+});
 
 var handlePostRequest = function(req, res) {
   var body = '';
@@ -57,17 +52,26 @@ var handlePostRequest = function(req, res) {
 };
 
 var validate = function(req, res, data) {
-  var errors = [];
-  if (!messageFieldValid(data.message)) {
-    errors.push("message");
+  var errors = {};
+  var hasError = false;
+  
+  var messageError = messageFieldError(data.message);
+  var nameError = nameFieldError(data.name);
+  var emailError = emailFieldError(data.email);
+
+  if (messageError) {
+    errors["message"] = messageError;
+    hasError = true;
   }
-  if (!nameFieldValid(data.name)) {
-    errors.push("name");
+  if (nameError) {
+    errors["name"] = nameError;
+    hasError = true;
   }
-  if (!emailFieldValid(data.email)) {
-    errors.push("email");
+  if (emailError) {
+    errors["email"] = emailError;
+    hasError = true;
   }
-  if (errors.length == 0) {
+  if (!hasError) {
     insertContactAndRespond(res, data)
   } else {
     sendFailure(res, errors);
@@ -106,6 +110,9 @@ var initTable = function(){
   });
 };
 
+// for some reason this isn't working as an immediate function, so fuck
+initTable();
+
 var insertContactAndRespond = function(res, data) {
   var insertString = 
     "INSERT INTO contact(name, email, message) VALUES($1,$2,$3)";
@@ -122,34 +129,35 @@ var insertContactAndRespond = function(res, data) {
   });
 }
 
-var emailFieldValid = function(string) {
-  var at = string.indexOf('@');
-  var period = string.indexOf('.');
-  if (at > 0) {
-    if (period > at + 1 && period < string.length - 1) {
-      return true;
+var emailFieldError = function(string) {
+  if (string.length == 0) {
+    return "Please enter your email address.";
+  } else {
+    var at = string.indexOf('@');
+    var period = string.indexOf('.');
+    if (at > 0) {
+      if (period > at + 1 && period < string.length - 1) {
+        return false;
+      }
     }
+    return "Please enter a valid email address.";
   }
-  return false;
 }
 
 // Could use /^([A-z]|\s)+$/ to include only letters and spaces,
 // but I am going to just return true for the time being (Umlauts? Accents? etc)
-var nameFieldValid = function(string) {
-  if (string.length > 0) {
-    return true;
+var nameFieldError = function(string) {
+  if (string.length == 0) {
+    return "Please enter your name.";
   } else {
     return false;
   }
 }
 
-var messageFieldValid = function(string) {
-  if (string.length > 0) {
-    return true;
+var messageFieldError = function(string) {
+  if (string.length == 0) {
+    return "Please enter your project details.";
   } else {
     return false;
   }
 }
-
-// for some reason this isn't working as an immediate function, so fuck
-initTable();
