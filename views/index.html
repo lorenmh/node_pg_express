@@ -2,6 +2,8 @@
 <html>
 <head>
 <link rel="stylesheet" type="text/css" href="/assets/css/style.css" />
+<script type="text/javascript" src="/assets/js/modernizr.js" >
+</script>
 <link href='http://fonts.googleapis.com/css?family=Lato:300,400,300italic,400italic' rel='stylesheet' type='text/css'>
 </head>
 <body>
@@ -24,13 +26,13 @@
 
 <form id="contact-form" name="contact-form" method="post" action="/contact">
 
-<textarea id="message" name="message" onchange="showHideInputs(this);" placeholder="Enter your project details here and we'll reach out to you"></textarea>
+<textarea id="message" name="message" placeholder="Enter your project details here and we'll reach out to you">Enter your project details here and we'll reach out to you</textarea>
 
 <div class="contact-info-fields">
-  <input id="name" name="name" type="text" placeholder="Name" />
-  <input id="email" name="email" type="text" placeholder="Email" />
+  <input id="name" name="name" type="text" placeholder="Name"/>
+  <input id="email" name="email" type="text" placeholder="Email"/>
 </div>
-<input id="submit" type="submit" value="Submit" />
+<input id="submit" type="submit" value="Submit"/>
 
 </form>
 
@@ -42,9 +44,9 @@ form.onsubmit = function(event) {
   // convert form to JS object
   var data = {};
   for (var i = 0; i < form.length; i++) {
-    var input = form[i];
-    if (input.name) {
-      data[input.name] = input.value;
+    var el = form[i];
+    if (el.name) {
+      data[el.name] = el.value;
     }
   }
 
@@ -53,37 +55,77 @@ form.onsubmit = function(event) {
   xhr.open(form.method, form.action, true);
   xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
   xhr.send(JSON.stringify(data));
-  console.log("request: " + JSON.stringify(data));
+
   // receive response
   xhr.onreadystatechange = function() {
     if (xhr.readyState == 4) {
-      console.log("response: " + xhr.responseText);
+      /* Do stuff with the errors */
     }
   };
 }
 
+// modernizr for placeholder
+if (Modernizr.input.placeholder) {
+  var textAreaElements = document.getElementsByTagName('textarea');
+  for (var i = 0; i < textAreaElements.length; i++) {
+    textAreaElements[i].value = "";
+  }
+} else {
+  HTMLInputElement.prototype.setValue = function() {
+    this.value = this.nameToValue();
+  }
 
-</script>
+  HTMLInputElement.prototype.clearValue = function() {
+    this.value = "";
+  }
 
-<script>
-var inputsVisible = false;
-
-var showHideInputs = function(elem) {
-  if (elem.value.length > 0) {
-    if (inputsVisible === false) {
-      showAll();
-    }
-  } else {
-    if (inputsVisible === true) {
-      hideAll();
+  HTMLInputElement.prototype.checkFocus = function() {
+    if (this.value === this.nameToValue()) {
+      this.clearValue();
     }
   }
+  
+  HTMLInputElement.prototype.checkBlur = function() {
+    if (this.value === "") {
+      this.setValue();
+    }
+  }
+
+  HTMLInputElement.prototype.nameToValue = function() {
+    return this.name.charAt(0).toUpperCase() + this.name.slice(1);
+  }
+
+  HTMLTextAreaElement.prototype.setValue = 
+      HTMLInputElement.prototype.setValue;
+  HTMLTextAreaElement.prototype.clearValue = 
+      HTMLInputElement.prototype.clearValue;
+  HTMLTextAreaElement.prototype.checkFocus = 
+      HTMLInputElement.prototype.checkFocus;
+  HTMLTextAreaElement.prototype.checkBlur = 
+      HTMLInputElement.prototype.checkBlur;
+
+  HTMLTextAreaElement.prototype.nameToValue = function() {
+    return this.valueHolder;
+  }
+
+  // initialize all inputs
+  var inputElements = document.getElementsByTagName('input');
+  for (var i = 0; i < inputElements.length; i++) {
+    if (inputElements[i].type.toLowerCase() === "text") {
+      inputElements[i].setValue();
+      inputElements[i].onfocus = inputElements[i].checkFocus;
+      inputElements[i].onblur = inputElements[i].checkBlur;
+    }
+  }
+
+  // initialize all inputs
+  var textAreaElements = document.getElementsByTagName('textarea');
+  for (var i = 0; i < textAreaElements.length; i++) {
+    textAreaElements[i].valueHolder = textAreaElements[i].value;
+    textAreaElements[i].onfocus = textAreaElements[i].checkFocus;
+    textAreaElements[i].onblur = textAreaElements[i].checkBlur;
+  }
 }
-
-var showButton = function() {
-
-}
-
 </script>
 </div>
 

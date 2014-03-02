@@ -1,16 +1,4 @@
 /** CONTACT FORM! **/
-var pg = require("pg");
-
-exports.initClient = function(dbUri) {
-  var client = new pg.Client(dbUri);
-  client.connect(function(error) {
-    if (error) {
-      return console.error("connection error", error);
-    }
-  });
-
-  return client;
-};
 
 exports.initTable = function(client) {
   var tableInitString = 
@@ -31,20 +19,8 @@ exports.initTable = function(client) {
   });
 }
 
-exports.handlePostRequest = function(req, res, client) {
-  var body = '';
-  req.setEncoding('utf8');
-  req.on('data', function(chunk) {
-    body += chunk;
-  })
-  req.on('end', function() {
-    validate(req, res, client, JSON.parse(body));
-  })
-};
-
-function validate(req, res, client, data) {
+exports.validate = function(data, callback) {
   var errors = {};
-  var hasError = false;
 
   var messageError = messageFieldError(data.message);
   var nameError = nameFieldError(data.name);
@@ -52,43 +28,28 @@ function validate(req, res, client, data) {
 
   if (messageError) {
     errors["message"] = messageError;
-    hasError = true;
   }
+
   if (nameError) {
     errors["name"] = nameError;
-    hasError = true;
   }
+
   if (emailError) {
     errors["email"] = emailError;
-    hasError = true;
   }
 
-  if (!hasError) {
-    insertContactAndRespond(res, client, data)
-  } else {
-    sendFailure(res, errors);
-  }
+  callback(errors);
 }
-
-function sendFailure(res, errors) {
-  res.json(400, {error: errors});
-};
 
 // for some reason this isn't working as an immediate function, so fuck
 
-function insertContactAndRespond(res, data, client) {
+exports.insert = function(client, data, callback) {
   var insertString = 
     "INSERT INTO contact(name, email, message) VALUES($1,$2,$3)";
   var insertArray = [data.name, data.email, data.message];
 
   client.query(insertString, insertArray, function(error) {
-    if (error) {
-      return console.error("row insert error", error);
-      res.json(500, {error:"Internal Server Error (insertion)"});
-    }
-
-    res.json({ok: true});
-    client.end();
+    callback(error);
   });
 }
 
